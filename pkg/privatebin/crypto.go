@@ -1,8 +1,6 @@
 package privatebin
 
 import (
-	"bytes"
-	"compress/zlib"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha256"
@@ -71,7 +69,7 @@ func (p *Paste) encrypt() (interface{}, []byte, error) {
 	compressionType := "none"
 	var pasteBlob []byte
 
-	if p.compress {
+	/* if p.compress { // deactivated for now as it's not working
 		compressionType = "zlib"
 		var b bytes.Buffer
 		w := zlib.NewWriter(&b)
@@ -84,7 +82,8 @@ func (p *Paste) encrypt() (interface{}, []byte, error) {
 		pasteBlob = b.Bytes()
 	} else {
 		pasteBlob = rawPasteBlob
-	}
+	} */
+	pasteBlob = rawPasteBlob
 
 	nonce, err := getRandomBytes(16)
 	if err != nil {
