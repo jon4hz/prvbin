@@ -44,7 +44,7 @@ type InnerPaste struct {
 }
 
 type PasteData struct {
-	InnerPaste     []InnerPaste
+	InnerPaste     InnerPaste
 	Formatter      string
 	OpenDiscussion int
 	Burn           int

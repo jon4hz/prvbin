@@ -91,27 +91,25 @@ func (p *Paste) encrypt() (interface{}, []byte, error) {
 		return nil, nil, err
 	}
 
-	pasteData := []PasteData{
-		{
-			InnerPaste: []InnerPaste{
-				{
-					Nonce:           base64.StdEncoding.EncodeToString(nonce),
-					KDFSalt:         base64.StdEncoding.EncodeToString(kdfSalt),
-					KDFIterations:   kdfIterations,
-					KDFKeySize:      kdfKeySize,
-					ADataSize:       adataSize,
-					CipherAlgo:      cipherAlgo,
-					CipherMode:      cipherMode,
-					CompressionType: compressionType,
-				},
-			},
-			Formatter:      p.formatter,
-			OpenDiscussion: p.opendiscussion,
-			Burn:           p.burn,
+	pasteData := PasteData{
+
+		InnerPaste: InnerPaste{
+			Nonce:           base64.StdEncoding.EncodeToString(nonce),
+			KDFSalt:         base64.StdEncoding.EncodeToString(kdfSalt),
+			KDFIterations:   kdfIterations,
+			KDFKeySize:      kdfKeySize,
+			ADataSize:       adataSize,
+			CipherAlgo:      cipherAlgo,
+			CipherMode:      cipherMode,
+			CompressionType: compressionType,
 		},
+
+		Formatter:      p.formatter,
+		OpenDiscussion: p.opendiscussion,
+		Burn:           p.burn,
 	}
 
-	i := toJSONArray(pasteData)
+	i := toJSONArray(&pasteData)
 	pasteAData, err := json.Marshal(i)
 	if err != nil {
 		return nil, nil, err
@@ -132,16 +130,16 @@ func (p *Paste) encrypt() (interface{}, []byte, error) {
 	return i, cipherText, nil
 }
 
-func toJSONArray(d []PasteData) []interface{} {
+func toJSONArray(d *PasteData) []interface{} {
 	ii := []interface{}{
-		d[0].InnerPaste[0].Nonce,
-		d[0].InnerPaste[0].KDFSalt,
-		d[0].InnerPaste[0].KDFIterations,
-		d[0].InnerPaste[0].KDFKeySize,
-		d[0].InnerPaste[0].ADataSize,
-		d[0].InnerPaste[0].CipherAlgo,
-		d[0].InnerPaste[0].CipherMode,
-		d[0].InnerPaste[0].CompressionType,
+		d.InnerPaste.Nonce,
+		d.InnerPaste.KDFSalt,
+		d.InnerPaste.KDFIterations,
+		d.InnerPaste.KDFKeySize,
+		d.InnerPaste.ADataSize,
+		d.InnerPaste.CipherAlgo,
+		d.InnerPaste.CipherMode,
+		d.InnerPaste.CompressionType,
 	}
-	return []interface{}{ii, d[0].Formatter, d[0].OpenDiscussion, d[0].Burn}
+	return []interface{}{ii, d.Formatter, d.OpenDiscussion, d.Burn}
 }
