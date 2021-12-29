@@ -7,75 +7,44 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/btcsuite/btcutil/base58"
+	"time"
 )
 
 const (
-	defaultPasteURL = "https://paste.i2pd.xyz"
+	DefaultURL = "https://bin.0xfc.de"
 )
 
-type PasteReq struct {
-	V     int         `json:"v"`
-	AData interface{} `json:"adata"`
-	CT    string      `json:"ct"`
-	Meta  PasteMeta   `json:"meta"`
+var validExpires = map[string]time.Duration{
+	"5min":   5 * time.Minute,
+	"10min":  10 * time.Minute,
+	"1hour":  1 * time.Hour,
+	"1day":   24 * time.Hour,
+	"1week":  7 * 24 * time.Hour,
+	"1month": 30 * 24 * time.Hour,
+	"1year":  365 * 24 * time.Hour,
+	"never":  0,
 }
 
-type PasteMeta struct {
-	Expire string `json:"expire"`
+func ValidExpire(expire string) bool {
+	_, ok := validExpires[expire]
+	return ok
 }
 
-type RawPasteData struct {
-	Paste          string `json:"paste"`
-	Attachment     string `json:"attachment,omitempty"`
-	AttachmentName string `json:"attachment_name,omitempty"`
+type Client struct {
+	http *http.Client
+	url  string
 }
 
-type InnerPaste struct {
-	Nonce           string
-	KDFSalt         string
-	KDFIterations   int
-	KDFKeySize      int
-	ADataSize       int
-	CipherAlgo      string
-	CipherMode      string
-	CompressionType string
-}
-
-type PasteData struct {
-	InnerPaste     InnerPaste
-	Formatter      string
-	OpenDiscussion int
-	Burn           int
-}
-
-type Paste struct {
-	url            string
-	content        []byte
-	passphrase     []byte
-	password       string
-	formatter      string
-	attachmentName string
-	attachment     string
-	compress       bool
-	burn           int
-	opendiscussion int
-	expire         string
-}
-
-type Opts func(*Paste)
-
-func WithURL(url string) Opts {
-	return func(p *Paste) {
-		p.url = url
+func NewClient(url string) *Client {
+	return &Client{
+		http: &http.Client{},
+		url:  url,
 	}
 }
 
 func NewPaste(content []byte, password string, formatter string, attachmentName string, attachment string,
-	compress bool, burn int, opendiscussion int, expire string, opts ...Opts) *Paste {
-	p := &Paste{
-		url:            defaultPasteURL,
+	compress bool, burn int, opendiscussion int, expire string) *Paste {
+	return &Paste{
 		content:        content,
 		password:       password,
 		formatter:      formatter,
@@ -86,32 +55,12 @@ func NewPaste(content []byte, password string, formatter string, attachmentName 
 		opendiscussion: opendiscussion,
 		expire:         expire,
 	}
-	for _, f := range opts {
-		f(p)
-	}
-	return p
 }
 
-type RespStatus struct {
-	Status int `json:"status"`
-}
-
-type RespError struct {
-	Status  int
-	Message string
-}
-
-type RespSuccess struct {
-	Status      int
-	ID          string
-	URL         string
-	DeleteToken string
-}
-
-func (p *Paste) Send() error {
+func (c *Client) Send(p *Paste) (*RespSuccess, error) {
 	adata, cyperText, err := p.encrypt()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	data := PasteReq{
@@ -125,51 +74,51 @@ func (p *Paste) Send() error {
 
 	b, err := json.Marshal(data)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	fmt.Println(string(b))
 
-	h := &http.Client{}
-	req, err := http.NewRequest("POST", p.url, bytes.NewReader(b))
+	req, err := http.NewRequest("POST", c.url, bytes.NewReader(b))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req.Header.Set("X-Requested-With", "JSONHttpRequest")
 
-	resp, err := h.Do(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("%d: %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("%d: %s", resp.StatusCode, resp.Status)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var respStatus RespStatus
 	if err := json.Unmarshal(body, &respStatus); err != nil {
-		return err
+		return nil, err
 	}
 
 	if respStatus.Status != 0 {
 		var respError RespError
 		if err := json.Unmarshal(body, &respError); err != nil {
-			return err
+			return nil, err
 		}
-		return fmt.Errorf("%d: %s", respError.Status, respError.Message)
+		return nil, fmt.Errorf("%d: %s", respError.Status, respError.Message)
 	}
 
 	var respSuccess RespSuccess
 	if err := json.Unmarshal(body, &respSuccess); err != nil {
-		return err
+		return nil, err
 	}
 
-	fmt.Printf("%s%s#%s\n", p.url, respSuccess.URL, base58.Encode(p.passphrase)) // TODO: return instead of print
+	return &respSuccess, nil
+}
 
-	return nil
+func (p Paste) GetPassphrase() []byte {
+	return p.passphrase
 }

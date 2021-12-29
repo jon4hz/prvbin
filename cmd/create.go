@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/jon4hz/prvbin/pkg/privatebin"
 	"github.com/spf13/cobra"
 )
@@ -23,6 +24,7 @@ var createCmd = &cobra.Command{
 }
 
 var createFlags struct {
+	text           string
 	file           string
 	password       string
 	attachment     string
@@ -35,6 +37,7 @@ var createFlags struct {
 }
 
 func init() {
+	createCmd.Flags().StringVarP(&createFlags.text, "text", "t", "", "text to upload")
 	createCmd.Flags().StringVarP(&createFlags.file, "file", "f", "", "file to upload")
 	createCmd.Flags().StringVarP(&createFlags.password, "password", "p", "", "password to protect the paste")
 	createCmd.Flags().StringVarP(&createFlags.expire, "expire", "e", "1month", "expire time")
@@ -47,7 +50,7 @@ func init() {
 }
 
 func create(cmd *cobra.Command, args []string) error {
-	if !validExpire(createFlags.expire) {
+	if !privatebin.ValidExpire(createFlags.expire) {
 		return errors.New("invalid expire time")
 	}
 
@@ -60,7 +63,10 @@ func create(cmd *cobra.Command, args []string) error {
 		formatter      string
 		err            error
 	)
-	if createFlags.file != "" {
+
+	if createFlags.text != "" {
+		content = []byte(createFlags.text)
+	} else if createFlags.file != "" {
 		// read file
 		content, err = ioutil.ReadFile(createFlags.file)
 		if err != nil {
@@ -94,7 +100,7 @@ func create(cmd *cobra.Command, args []string) error {
 	}
 
 	if createFlags.attachment != "" {
-		c, err := ioutil.ReadFile(createFlags.attachment)
+		c, err := ioutil.ReadFile(createFlags.attachment) //nolint:govet
 		if err != nil {
 			return err
 		}
@@ -105,14 +111,23 @@ func create(cmd *cobra.Command, args []string) error {
 		attachmentName = filepath.Base(createFlags.attachment)
 	}
 
+	if rootFlags.url == "" {
+		rootFlags.url = privatebin.DefaultURL
+	}
+	client := privatebin.NewClient(rootFlags.url)
+
 	paste := privatebin.NewPaste(
 		content, createFlags.password, formatter, attachmentName, attachment,
 		createFlags.compress, burn, opendiscussion, createFlags.expire,
 	)
 
-	if err := paste.Send(); err != nil {
+	r, err := client.Send(paste)
+	if err != nil {
 		return err
 	}
+
+	fullURL := fmt.Sprintf("%s%s#%s", rootFlags.url, r.URL, base58.Encode(paste.GetPassphrase()))
+	fmt.Println(fullURL)
 
 	return nil
 }
@@ -159,24 +174,4 @@ func selectEditor() (string, error) {
 		e = fallbackEditor
 	}
 	return exec.LookPath(e)
-}
-
-var validExpires = []string{
-	"5min",
-	"10min",
-	"1hour",
-	"1day",
-	"1week",
-	"1month",
-	"1year",
-	"never",
-}
-
-func validExpire(expire string) bool {
-	for _, v := range validExpires {
-		if v == expire {
-			return true
-		}
-	}
-	return false
 }
