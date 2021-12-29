@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -69,7 +68,7 @@ func create(cmd *cobra.Command, args []string) error {
 		content = []byte(createFlags.text)
 	} else if createFlags.file != "" {
 		// read file
-		content, err = ioutil.ReadFile(createFlags.file)
+		content, err = os.ReadFile(createFlags.file)
 		if err != nil {
 			return err
 		}
@@ -101,7 +100,7 @@ func create(cmd *cobra.Command, args []string) error {
 	}
 
 	if createFlags.attachment != "" {
-		c, err := ioutil.ReadFile(createFlags.attachment) //nolint:govet
+		c, err := os.ReadFile(createFlags.attachment) //nolint:govet
 		if err != nil {
 			return err
 		}
@@ -135,7 +134,7 @@ func create(cmd *cobra.Command, args []string) error {
 
 func createTmpFile() ([]byte, error) {
 	// create a temporary file
-	tmpF, err := ioutil.TempFile(".", ".prvbin-")
+	tmpF, err := os.CreateTemp(".", ".prvbin-")
 	if err != nil {
 		return nil, err
 	}
@@ -161,8 +160,8 @@ func createTmpFile() ([]byte, error) {
 		return nil, err
 	}
 
-	// read the file
-	content, err := ioutil.ReadFile(tmpF.Name())
+	// read the file$
+	content, err := os.ReadFile(tmpF.Name())
 	if err != nil {
 		return nil, err
 	}

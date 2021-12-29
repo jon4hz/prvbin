@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 )
@@ -93,7 +93,7 @@ func (c *Client) Send(p *Paste) (*RespSuccess, error) {
 		return nil, fmt.Errorf("%d: %s", resp.StatusCode, resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
