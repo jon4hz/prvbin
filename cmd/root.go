@@ -12,7 +12,9 @@ var rootCmd = &cobra.Command{
 	Use:              "prvbin",
 	Short:            "yet another privatebin cli tool",
 	TraverseChildren: true,
-	RunE:             create,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmd.Help()
+	},
 }
 
 func init() {

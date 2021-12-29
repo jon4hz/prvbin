@@ -18,9 +18,10 @@ import (
 const fallbackEditor = "vim"
 
 var createCmd = &cobra.Command{
-	Use:   "create",
-	Short: "Create a new paste",
-	RunE:  create,
+	Use:     "create",
+	Aliases: []string{"c", "new"},
+	Short:   "Create a new paste",
+	RunE:    create,
 }
 
 var createFlags struct {
